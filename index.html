@@ -6,7 +6,7 @@
     <style>
       .chartCard {
         width: 98.4vw;
-        height: calc(100vh - 40px);
+        height: calc(100vh - 24px);
         background: rgba(54, 162, 235, 0.2);
         display: flex;
         align-items: center;
@@ -87,6 +87,11 @@
           <div contenteditable="true" id="input2" name="input2"></div>
           
         </div><br>
+        <div class="input-container">
+          <label for="input3">Values Between Points:</label>
+          <div contenteditable="true" id="input3" name="input3"></div>
+          
+        </div><br>
         <p>
           &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;
           Hotkey "s"
@@ -114,12 +119,22 @@
       }
 
       var data = [];
+      var valid = true;
       
       function cleanAndParseValues(value) {
-        // Remove non-numeric characters and whitespace
+        valid = true;
+
         var cleanedValue = value.replace(/[^\d.,\s\t]/g, '');
-        
-        // Split the cleaned value based on different delimiters
+        var badValues = ['/','[','^','\d','.',',','\s','\t',']','/g',''];
+        var splitValue = cleanedValue.split(/[,|\s\t]+/);
+
+        console.log(splitValue);
+
+        for (let i = 0; i < splitValue.length; i ++) {
+          if (badValues.indexOf(splitValue[i]) > -1) {
+            valid = false;
+          }
+        }
         var parsedValues = cleanedValue.split(/[,|\s\t]+/).map(Number);
         
         return parsedValues;
@@ -129,15 +144,22 @@
         return new Promise(function(resolve, reject) {
           var input1Value = document.getElementById('input1').innerText;
           var input2Value = document.getElementById('input2').innerText;
+          var input3Value = document.getElementById('input3').innerText;
           
-          // Check if both input fields have values
           if (input1Value.trim() === '' || input2Value.trim() === '') {
-            reject('Please enter values in both input fields.');
+            reject('Please enter values in both coordinate fields.');
           } else {
             var pointx = cleanAndParseValues(input1Value);
             var pointy = cleanAndParseValues(input2Value);
-            
-            resolve({ pointx: pointx, pointy: pointy });
+            var pbtwn = cleanAndParseValues(input3Value);
+
+            if (!valid) {
+              reject('Please enter numerical values only.');
+            } else if (pointx.length !== pointy.length) {
+              reject('Please enter the same number of valid coordinates in each field.');
+            } else {
+              resolve({ pointx: pointx, pointy: pointy, pbtwn: pbtwn });
+            }
           }
         });
       }
@@ -146,22 +168,15 @@
         try {
           var inputData = await getInputValues();
           
-          // Access the input arrays
           var pointx = inputData.pointx;
           var pointy = inputData.pointy;
-          
-          // Perform your code logic using the input arrays
-          
-          // Example: Display the arrays
-          console.log("x Values:", pointx);
-          console.log("y Values:", pointy);
+
         } catch (error) {
           alert(error);
           console.error(error);
         }
 
-
-        let pbtwn = 100;
+        var pbtwn = inputData.pbtwn;
         let ycurpoint = pointy[0];
         let xcurpoint = pointx[0];
         
@@ -177,10 +192,6 @@
             xcurpoint += xchange;
           }
         }
-        console.log("x Values", pointx);
-        console.log("y Values", pointy);
-
-        console.log("Data", data);
 
         const totalDuration = pointx[pointx.length-1]*1000;
         const delayBetweenPoints = totalDuration / data.length;
@@ -202,7 +213,7 @@
                     type: 'number',
                     easing: 'linear',
                     duration: delayBetweenPoints,
-                    from: NaN, // the point is initially skipped
+                    from: NaN,
                     delay(ctx) {
                       if (ctx.type !== 'data' || ctx.xStarted) {
                         return 0;
@@ -248,7 +259,7 @@
         function destroyChart() {
           if(myChart) {
             myChart.destroy();
-            myChart = undefined; // Reset the variable
+            myChart = undefined;
             data = [];
           }
           startCode();
@@ -259,8 +270,7 @@
             destroyChart();
           }
         });
-
+        
     </script>
-
   </body>
 </html>
