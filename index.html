@@ -103,13 +103,18 @@
     <div class="form-container">
       <form>
         <button class="start-code-button" type="button" onclick="handleButtonClick()">Animate Graph</button>
+        <button class="start-code-button" type="button" onclick="startRecording()">Start Recording</button>
+        <button class="start-code-button" type="button" onclick="stopRecording()">Stop Recording</button>
       </form>
     </div>
-    
+    <a id="downloadLink" style="display: none;">Download Video</a>
 
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js"></script>
     <script>
       let myChart;
+      let mediarecorder;
+      let recordedChunks = [];
+      let recording = false;
 
       function handleButtonClick() {
         if (myChart) {
@@ -118,6 +123,77 @@
           startCode();
         }
       }
+
+      function startRecording() {
+    const canvas = document.getElementById('myChart');
+    const stream = canvas.captureStream(60); // 60 FPS recording
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+
+    // Capture video data as chunks
+    mediaRecorder.ondataavailable = function (event) {
+      if (event.data.size > 0) {
+        recordedChunks.push(event.data);
+      }
+    };
+
+    // When recording stops, create a downloadable link
+    mediaRecorder.onstop = function () {
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const downloadLink = document.getElementById('downloadLink');
+      downloadLink.href = url;
+      downloadLink.download = 'graph_animation.webm';
+      downloadLink.style.display = 'block';
+      recordedChunks = [];
+    };
+
+    mediaRecorder.start();
+    recording = true;
+    alert("Recording started!");
+  }
+
+  function stopRecording() {
+    if (recording) {
+      mediaRecorder.stop();
+      recording = false;
+      
+      mediaRecorder.onstop = function () {
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+
+      // Create a download button dynamically
+      const downloadButton = document.createElement('button');
+      downloadButton.innerText = 'Download Video';
+      downloadButton.style.padding = '10px 20px';
+      downloadButton.style.backgroundColor = '#4c98af';
+      downloadButton.style.color = '#fff';
+      downloadButton.style.border = 'none';
+      downloadButton.style.borderRadius = '10px';
+      downloadButton.style.cursor = 'pointer';
+      downloadButton.style.marginTop = '10px';
+      downloadButton.style.fontWeight = 'bold';
+      downloadButton.style.textShadow = '1px 1px 2px #000, 0 0 1em #000';
+      downloadButton.style.boxShadow = '1px 1px 4px #003cff, 0 0 1em #00e1ff';
+
+      // Add the download functionality
+      downloadButton.onclick = function () {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'graph_animation.webm';
+        a.click();
+      };
+
+      // Append the button to the form-container
+      const container = document.querySelector('.form-container');
+      container.appendChild(downloadButton);
+      recordedChunks = [];
+    };
+
+      alert("Recording stopped! Click the 'Download Video' link to save.");
+    } else {
+      alert("No recording in progress.");
+    }
+  }
 
       var data = [];
       var valid = true;
@@ -145,6 +221,9 @@
         return new Promise(function(resolve, reject) {
           var input1Value = document.getElementById('input1').innerText;
           var input2Value = document.getElementById('input2').innerText;
+          if(document.getElementById('input3').innerText == undefined) {
+            input3Value = 100;
+          }
           var input3Value = document.getElementById('input3').innerText;
           
           if (input1Value.trim() === '' || input2Value.trim() === '') {
@@ -176,8 +255,14 @@
           alert(error);
           console.error(error);
         }
-
-        var pbtwn = inputData.pbtwn;
+        /*
+        if(inputData.pbtwn != undefined) {
+          var pbtwn = inputData.pbtwn;
+        } else {
+          var pbtwn = 100;
+        }
+          */
+         var pbtwn = 100;
         let ycurpoint = pointy[0];
         let xcurpoint = pointx[0];
         
@@ -246,6 +331,10 @@
                 scales: {
                     x: {
                         type: 'linear'
+                    },
+                    y: {
+                      type: 'linear',
+                      min: 0
                     }
                 }
             }
