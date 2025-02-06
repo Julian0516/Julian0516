@@ -16,7 +16,7 @@
       
       .chartBox {
         width: 90%;
-        padding: 0px;
+        padding: 0.5%;
         border-radius: 10px;
         border: solid 3px rgba(54, 162, 235, 1);
         background: white;
@@ -43,7 +43,7 @@
       text-align: center;
     }
 
-    .start-code-button {
+      .start-code-button {
       font-family: Georgia;
       font-size: 16px;
       padding: 10px 20px;
@@ -60,7 +60,7 @@
       box-shadow:1px 1px 4px #003cff, 0 0 1em #00e1ff;
     }
 
-    .start-code-button:hover {
+      .start-code-button:hover {
       background-color: #4364c0;
     }
 
@@ -90,7 +90,8 @@
         </div><br>
         <div class="input-container">
           <label for="input3">Values Between Points:</label>
-          <div contenteditable="true" id="input3" name="input3"></div>
+          
+          <div contenteditable="true" id="input3" name="input3">60</div>
           
         </div><br>
         <p>
@@ -105,6 +106,7 @@
         <button class="start-code-button" type="button" onclick="handleButtonClick()">Animate Graph</button>
         <button class="start-code-button" type="button" onclick="startRecording()">Start Recording</button>
         <button class="start-code-button" type="button" onclick="stopRecording()">Stop Recording</button>
+        <button class="start-code-button" type="button" onclick="downloadRecording()">Download Video</button>
       </form>
     </div>
     <a id="downloadLink" style="display: none;">Download Video</a>
@@ -115,6 +117,21 @@
       let mediarecorder;
       let recordedChunks = [];
       let recording = false;
+      let blob;
+      let url;
+      let recorded = false;
+
+      const plugin = {
+        id: 'customCanvasBackgroundColor',
+        beforeDraw: (chart, args, options) => {
+          const {ctx} = chart;
+          ctx.save();
+          ctx.globalCompositeOperation = 'destination-over';
+          ctx.fillStyle = options.color || '#99ffff';
+          ctx.fillRect(0, 0, chart.width, chart.height);
+          ctx.restore();
+        }
+      };
 
       function handleButtonClick() {
         if (myChart) {
@@ -125,73 +142,52 @@
       }
 
       function startRecording() {
-    const canvas = document.getElementById('myChart');
-    const stream = canvas.captureStream(60); // 60 FPS recording
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+        const canvas = document.getElementById('myChart');
+        const stream = canvas.captureStream(60); // 60 FPS recording
+        mediaRecorder = new MediaRecorder(stream, {
+          mimeType: "video/webm",
+          videoBitsPerSecond: 5000000 // 5 Mbps (increase for better quality)
+        });
 
-    // Capture video data as chunks
-    mediaRecorder.ondataavailable = function (event) {
-      if (event.data.size > 0) {
-        recordedChunks.push(event.data);
-      }
-    };
+        // Capture video data as chunks
+        mediaRecorder.ondataavailable = function (event) {
+          if (event.data.size > 0) {
+            recordedChunks.push(event.data);
+          }
+        };
 
-    // When recording stops, create a downloadable link
-    mediaRecorder.onstop = function () {
-      const blob = new Blob(recordedChunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      const downloadLink = document.getElementById('downloadLink');
-      downloadLink.href = url;
-      downloadLink.download = 'graph_animation.webm';
-      downloadLink.style.display = 'block';
-      recordedChunks = [];
-    };
-
-    mediaRecorder.start();
-    recording = true;
-    alert("Recording started!");
-  }
+        mediaRecorder.start();
+        recording = true;
+        alert("Recording started!");
+    }
 
   function stopRecording() {
     if (recording) {
       mediaRecorder.stop();
       recording = false;
+      recorded = true;
       
-      mediaRecorder.onstop = function () {
-      const blob = new Blob(recordedChunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-
-      // Create a download button dynamically
-      const downloadButton = document.createElement('button');
-      downloadButton.innerText = 'Download Video';
-      downloadButton.style.padding = '10px 20px';
-      downloadButton.style.backgroundColor = '#4c98af';
-      downloadButton.style.color = '#fff';
-      downloadButton.style.border = 'none';
-      downloadButton.style.borderRadius = '10px';
-      downloadButton.style.cursor = 'pointer';
-      downloadButton.style.marginTop = '10px';
-      downloadButton.style.fontWeight = 'bold';
-      downloadButton.style.textShadow = '1px 1px 2px #000, 0 0 1em #000';
-      downloadButton.style.boxShadow = '1px 1px 4px #003cff, 0 0 1em #00e1ff';
-
-      // Add the download functionality
-      downloadButton.onclick = function () {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'graph_animation.webm';
-        a.click();
-      };
-
-      // Append the button to the form-container
-      const container = document.querySelector('.form-container');
-      container.appendChild(downloadButton);
+      mediaRecorder.onstop = function downloadRecording() {
+        blob = new Blob(recordedChunks, { type: 'video/webm' });
+        url = URL.createObjectURL(blob);
       recordedChunks = [];
     };
 
       alert("Recording stopped! Click the 'Download Video' link to save.");
     } else {
       alert("No recording in progress.");
+    }
+  }
+
+  function downloadRecording() {
+    if(recorded) {
+      recorded = false;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'graph_animation.webm';
+      a.click();
+    } else {
+      alert("No recording saved.");
     }
   }
 
@@ -221,13 +217,10 @@
         return new Promise(function(resolve, reject) {
           var input1Value = document.getElementById('input1').innerText;
           var input2Value = document.getElementById('input2').innerText;
-          if(document.getElementById('input3').innerText == undefined) {
-            input3Value = 100;
-          }
           var input3Value = document.getElementById('input3').innerText;
           
-          if (input1Value.trim() === '' || input2Value.trim() === '') {
-            reject('Please enter values in both coordinate fields.');
+          if (input1Value.trim() === '' || input2Value.trim() === '' || input3Value.trim() === '') {
+            reject('Please enter values in all coordinate fields.');
           } else {
             var pointx = cleanAndParseValues(input1Value);
             var pointy = cleanAndParseValues(input2Value);
@@ -250,19 +243,13 @@
           
           var pointx = inputData.pointx;
           var pointy = inputData.pointy;
+          var pbtwn = inputData.pbtwn;
 
         } catch (error) {
           alert(error);
           console.error(error);
         }
-        /*
-        if(inputData.pbtwn != undefined) {
-          var pbtwn = inputData.pbtwn;
-        } else {
-          var pbtwn = 100;
-        }
-          */
-         var pbtwn = 100;
+        
         let ycurpoint = pointy[0];
         let xcurpoint = pointx[0];
         
@@ -326,20 +313,25 @@
                     intersect: false
                 },
                 plugins: {
+                  customCanvasBackgroundColor: {
+                  color: 'white',
+              },
                     legend: false
                 },
                 scales: {
                     x: {
-                        type: 'linear'
+                        type: 'linear',
+                        min: pointx[0]
                     },
                     y: {
                       type: 'linear',
                       min: 0
                     }
                 }
-            }
+            },
+            plugins: [plugin],
         };
-        
+       
           myChart = new Chart(
             document.getElementById('myChart'),
             config
